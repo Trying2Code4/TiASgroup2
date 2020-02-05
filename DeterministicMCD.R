@@ -60,9 +60,12 @@ corNSR <- function(z) {
 
 # modified spatial sign covariance matrix
 covMSS <- function(z) {
-  norm_vec <- function(x) sqrt(sum(x^2))
-  norms=apply(z,1,norm_vec)
+  norms=apply(z,1, function(x) sqrt(sum(x^2)))
   k=z/norms
+  
+  #Avoid Nan when summing
+  k[which(norms==0),]<-0
+  
   n=nrow(z)
   #n=length(z)
   S4=(t(k)%*%k)/n
@@ -80,28 +83,12 @@ covBACON1 <- function(z) {
 
 # raw OGK estimator of the covariance matrix with median and Qn
 rawCovOGK <- function(z) {
-  # Orthogonalized Gnanadesikan-Kettenring (OGK) Covariance Matrix Estimation
-  # source: https://cran.r-project.org/web/packages/robustbase/robustbase.pdf
-  
-  #initialize matrix
-  # m=ncol(z)
-  # S6=matrix(rep(0,(m^2)),m,m)
-  # for (i in 1:m) {
-  #   for (j in 1:m){
-  #     x=z[,i]
-  #     y=z[,j]
-  #     S6[i,j]=( (Qn(x+y))^2 - (Qn(x-y))^2 )/4
-  #   } 
-  # }
   
   output <- covOGK(z, sigmamu = s_Qn)
   S6 <- output$cov
   return(S6)
   # Hint: have a look at function covOGK() in package robustbase
 }
-
-# references: Hubert, M., Rousseeuw, P. J. and Verdonck, T. (2012) A deterministic algorithm for robust location
-# and scatter. Journal of Computational and Graphical Statistics 21, 618???637.
 
 ## ___________________________________________________________________
 
@@ -148,6 +135,12 @@ Mdistance <- function(X, t, s) {
 # any other output you want to return
 
 covDetMCD <- function(x, alpha, ...) {
+  X_og <- x
+  
+  #standardize input
+  x <- apply(x,2,function(y) (y-median(y))/Qn(y))
+  
+  
   #Calculate initial estimates of the scaling matrixes
   initialcovs <- list()
   initialcovs[["S1"]] <-corHT(x)
@@ -175,31 +168,25 @@ covDetMCD <- function(x, alpha, ...) {
     sigmahat <- E%*%L%*%t(E)
     
     #3.1.(3) Estimate the location paramater
-
     muhat <- E%*%sqrt(L)%*%apply(x%*%solve(E%*%sqrt(L)),2, median)
     
     #Select initial subset based on Mahanalobis distance (custom function)
-    subset <- x[rank(Mdistance(x, muhat, sigmahat))<=ceiling(0.5*nrow(x)),]
+    subset <- X_og[rank(Mdistance(x, muhat, sigmahat))<=ceiling(0.5*nrow(x)),]
     
-    #Derive the new parameters based on this subset
+    #Derive the new parameters based on a subset of the non standardized data
     sigmahat <- cov(subset)
     muhat <- colMeans(subset)
     
-    #Select the new subset and start c-steps
-    subset <- x[rank(Mdistance(x, muhat, sigmahat))<=h.alpha.n(alpha,nrow(x),ncol(x)),]
-    sigmahat <- cov(subset)
+    #Initialize sigmahat_old to always satisfy convergence criteria
     sigmahat_old <- 2*sigmahat
-    muhat <- colMeans(subset)
     indices <- c()
     
-    print(det(sigmahat))
-    print(det(sigmahat_old))
     #C-step until convergence, convergence defined as smaller than 1% decrease in the determinant of sigmahat
-    while(abs((det(sigmahat)-det(sigmahat_old))/det(sigmahat_old))>0.000001){
+    while(abs((det(sigmahat)-det(sigmahat_old))/det(sigmahat_old))>0.0000000000000001){
       print((det(sigmahat)-det(sigmahat_old))/det(sigmahat_old))
-      subset <- x[rank(Mdistance(x, muhat, sigmahat))<=h.alpha.n(alpha,nrow(x),ncol(x)),]
-      temp <- c(1:nrow(x))
-      indices <- temp[rank(Mdistance(x, muhat, sigmahat))<=h.alpha.n(alpha,nrow(x),ncol(x))]
+      subset <- X_og[rank(Mdistance(X_og, muhat, sigmahat))<=h.alpha.n(alpha,nrow(X_og),ncol(X_og)),]
+      temp <- c(1:nrow(X_og))
+      indices <- temp[rank(Mdistance(X_og, muhat, sigmahat))<=h.alpha.n(alpha,nrow(X_og),ncol(X_og))]
       sigmahat_old <- sigmahat
       sigmahat <- cov(subset)
       muhat <- colMeans(subset)
@@ -223,25 +210,23 @@ covDetMCD <- function(x, alpha, ...) {
   output[["raw.center"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["muhat"]]
   output[["raw.cov"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["sigmahat"]]
   output[["best"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["indices"]]
-  cat("Fraction of data used in unweighted: ",length(output[["best"]])/nrow(x),'\n')
+  cat("Fraction of data used in unweighted: ",length(output[["best"]])/nrow(X_og),'\n')
   
   #Reweighting step
-  chisquare <- qchisq(0.975, df = ncol(x))
-  subset2 <- x[Mdistance(x, output[["raw.center"]], output[["raw.cov"]])^2<=chisquare,]
+  chisquare <- qchisq(0.975, df = ncol(X_og))
+  subset2 <- X_og[Mdistance(X_og, output[["raw.center"]], output[["raw.cov"]])^2<=chisquare,]
   
   #Adding the reweighted parameters & weights to the output list
   output[["center"]] <- colMeans(subset2)
   output[["cov"]] <- cov(subset2)
-  output[["weights"]] <- as.integer(as.logical(Mdistance(x, output[["raw.center"]], output[["raw.cov"]])^2<=chisquare))
-  cat("Fraction of data used in reweighted: ", sum(output[["weights"]])/nrow(x))
+  output[["weights"]] <- as.integer(as.logical(Mdistance(X_og, output[["raw.center"]], output[["raw.cov"]])^2<=chisquare))
+  cat("Fraction of data used in reweighted: ", sum(output[["weights"]])/nrow(X_og))
   return(output)
   # Please note that the subset sizes for the MCD are not simply fractions of 
   # the number of observations in the data set, as discussed in the lectures.
   # You can use function h.alpha.n() from package robustbase to compute the 
   # subset size.
 }
-
-
 
 ## Function for regression based on the deterministic MCD
 
@@ -290,7 +275,7 @@ lmDetMCD <- function(x, y, alpha, ...) {
   output[["coefficients"]] <- coefficients
   
   #calculate fitted values
-  output[["fitted.values"]] <- x%*%coefficients[["beta"]]+coefficients[["alpha"]]*rep(1,nrow(x))
+  output[["fitted.values"]] <- x%*%coefficients[["beta"]]+coefficients[["alpha"]]*rep(1,nrow(X))
   
   #calculate residuals
   output[["residuals"]] <- y-output[["fitted.values"]]
@@ -304,3 +289,7 @@ test2 <- as.data.frame(cbind(z, test[["weights"]]))
 library(ggplot2)
 ggplot(test2, aes(V1, V2, color = V3)) +geom_point()
 
+#load("~/Dropbox/Uni/Master_Econometrie/Blok_3/Topics in Advanced stats/TiASgroup2/Eredivisie28.RData")
+test <- lmDetMCD(Eredivisie28[,1], Eredivisie28[,2], 0.75)
+test <- covDetMCD(Eredivisie28, 0.75)
+test2 <- lm(MarketValue ~ Age, data = Eredivisie28)
