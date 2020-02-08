@@ -4,7 +4,7 @@
 # Group 24
 # Thijs de Bruin  -
 # Colin Huliselan -
-# Sanne Lin -
+# Sanne Lin - 426416
 # Mate Varadi - 495556
 #
 # --------------------------------------------------------------------
@@ -47,13 +47,9 @@ corSpearman <- function(z) {
 
 # correlation matrix based on normal scores of the ranks
 corNSR <- function(z) {
-  ranks<- apply(z,2,rank)
+  ranks <- apply(z,2,rank)
   n=nrow(z)
-  normalscores<-qnorm ( (ranks - 1/3)/(n+1/3) )
-  # normalscores <- matrix(0,nrow(z),ncol(z))
-  # for (i in 1:ncol(ranks)) {
-  #   normalscores[,i] <- qqnorm(ranks[,i],plot.it=FALSE)$x
-  # }
+  normalscores <- qnorm((ranks - 1/3)/(n + 1/3))
   S3=cor(normalscores)
   return(S3)
 }
@@ -94,10 +90,24 @@ rawCovOGK <- function(z) {
 
 # compare & run
 # example data matix
+set.seed(0)
 y = rnorm(5000, 100, 40)
 x = mvrnorm(n=5000,mu=c(0,2),Sigma=matrix(c(1,0.6,0.6,1),2,2))
 x2= mvrnorm(n=250,mu=c(10,2),Sigma=matrix(c(1,0.6,0.6,1),2,2))
+# sigma <- matrix(c(1,0.6,-0.4, 0.6, 1, 0.3, -0.4, 0.3, 1),3,3)
+# x = mvrnorm(n=5000,mu=c(0,2,3),Sigma=sigma)
+# x2= mvrnorm(n=250,mu=c(10,2,3),Sigma=sigma)
 x <- rbind(x, x2)
+
+resultX <- covDetMCD(x, alpha=alpha)$raw.cov
+resultX_package <- DetMCD::DetMCD(x, alpha=alpha)$raw.cov
+resultX
+resultX_package
+
+resultX_rw <- covDetMCD(x, alpha=alpha)$cov
+resultX_package_rw <- DetMCD::DetMCD(x, alpha=alpha)$cov
+resultX_rw
+resultX_package_rw
 
 # standardize with median and Qn
 z=apply(x,2,function(y) (y-median(y))/Qn(y))
@@ -140,6 +150,8 @@ covDetMCD <- function(x, alpha, ...) {
   #standardize input
   x <- apply(x,2,function(y) (y-median(y))/Qn(y))
   
+  # Compute subset size
+  h <- h.alpha.n(alpha, nrow(x), ncol(x))
   
   #Calculate initial estimates of the scaling matrixes
   initialcovs <- list()
@@ -150,43 +162,49 @@ covDetMCD <- function(x, alpha, ...) {
   initialcovs[["S5"]] <-covBACON1(x)
   initialcovs[["S6"]] <-rawCovOGK(x)
   
-  #prepare a temperal list for the calculation of MDCraw
+  #prepare a temporary list for the calculation of MDCraw
   MDCRawtemp <- list()
   
-  #prepare a final output list
-  output <- list()
-  
   #For each of the 6 estimates do the following
-  for (i in 1:6){
+  for (S in initialcovs){
     #3.1.(1) Compute the matrix E of eigenvectors of Sk
-    S <- initialcovs[[i]]
     E <- eigen(S)$vectors
     B <- x%*%E
     
     #3.1.(2) Estimate the covariance of Z
-    L <- diag(apply(B,2,function(x) Qn(x)^2))
+    L <- diag(apply(B,2,Qn)^2)
     sigmahat <- E%*%L%*%t(E)
     
     #3.1.(3) Estimate the location paramater
-    muhat <- E%*%sqrt(L)%*%apply(x%*%solve(E%*%sqrt(L)),2, median)
+    sigmahalf <- E%*%sqrt(L)%*%t(E)
+    # sigmahalf <- E%*%sqrt(L)
+    muhat <- sigmahalf%*%apply(x%*%solve(sigmahalf),2, median)
     
-    #Select initial subset based on Mahanalobis distance (custom function)
-    subset <- X_og[rank(Mdistance(x, muhat, sigmahat))<=ceiling(0.5*nrow(x)),]
+    #Select initial subset based on Mahanalobis distance
+    h0 <- x[rank(Mdistance(x, muhat, sigmahat))<=ceiling(0.5*nrow(x)),]
+    sigmahat <- cov(h0)
+    muhat <- colMeans(h0)
     
-    #Derive the new parameters based on a subset of the non standardized data
+    #Derive the new parameters based on a subset of the non-standardized data
+    subset <- X_og[rank(Mdistance(x, muhat, sigmahat))<=h,]
     sigmahat <- cov(subset)
     muhat <- colMeans(subset)
     
     #Initialize sigmahat_old to always satisfy convergence criteria
-    sigmahat_old <- 2*sigmahat
-    indices <- c()
+    sigmahat_old <- NA
+    indices <- rep(NA,h)
     
     #C-step until convergence, convergence defined as smaller than 1% decrease in the determinant of sigmahat
-    while(abs((det(sigmahat)-det(sigmahat_old))/det(sigmahat_old))>0.0000000000000001){
-      print((det(sigmahat)-det(sigmahat_old))/det(sigmahat_old))
-      subset <- X_og[rank(Mdistance(X_og, muhat, sigmahat))<=h.alpha.n(alpha,nrow(X_og),ncol(X_og)),]
-      temp <- c(1:nrow(X_og))
-      indices <- temp[rank(Mdistance(X_og, muhat, sigmahat))<=h.alpha.n(alpha,nrow(X_og),ncol(X_og))]
+    while(is.na(sigmahat_old) || abs((det(sigmahat)-det(sigmahat_old))/det(sigmahat_old))>0.000001){
+      # if (length(sigmahat_old)>1) {
+      #   print(paste("Percentage change:", (det(sigmahat)-det(sigmahat_old))/det(sigmahat_old)))
+      # }
+      
+      # Create subset of observations with smallest distance
+      indices <- which(rank(Mdistance(X_og, muhat, sigmahat)) <= h)
+      subset <- X_og[indices,]
+      
+      # Update estimates
       sigmahat_old <- sigmahat
       sigmahat <- cov(subset)
       muhat <- colMeans(subset)
@@ -197,11 +215,11 @@ covDetMCD <- function(x, alpha, ...) {
     output[["muhat"]] <- muhat
     output[["indices"]] <- indices
     
-    MDCRawtemp[[paste(c("S",i),collapse = "")]] <- output
+    MDCRawtemp[[paste(c("S",S),collapse = "")]] <- output
   }
   
   #Now we find the smallest determinant of the covariance of all 6 methods
-  determinants <- c()
+  determinants <- rep(NA,6)
   for(i in 1:6){
     determinants[i] <- det(MDCRawtemp[[i]][["sigmahat"]])
   }
@@ -210,7 +228,7 @@ covDetMCD <- function(x, alpha, ...) {
   output[["raw.center"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["muhat"]]
   output[["raw.cov"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["sigmahat"]]
   output[["best"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["indices"]]
-  cat("Fraction of data used in unweighted: ",length(output[["best"]])/nrow(X_og),'\n')
+  # cat("Fraction of data used in unweighted: ",length(output[["best"]])/nrow(X_og),'\n')
   
   #Reweighting step
   chisquare <- qchisq(0.975, df = ncol(X_og))
@@ -220,8 +238,9 @@ covDetMCD <- function(x, alpha, ...) {
   output[["center"]] <- colMeans(subset2)
   output[["cov"]] <- cov(subset2)
   output[["weights"]] <- as.integer(as.logical(Mdistance(X_og, output[["raw.center"]], output[["raw.cov"]])^2<=chisquare))
-  cat("Fraction of data used in reweighted: ", sum(output[["weights"]])/nrow(X_og))
+  # cat("Fraction of data used in reweighted: ", sum(output[["weights"]])/nrow(X_og))
   return(output)
+  
   # Please note that the subset sizes for the MCD are not simply fractions of 
   # the number of observations in the data set, as discussed in the lectures.
   # You can use function h.alpha.n() from package robustbase to compute the 
@@ -254,12 +273,12 @@ lmDetMCD <- function(x, y, alpha, ...) {
   #Prepare output list
   output <- list()
   
-  #Perform MDC on the full dataset
-  output[["MDC"]] <- covDetMCD(X, alpha = alpha)
+  #Perform MCD on the full dataset
+  output[["MCD"]] <- covDetMCD(X, alpha = alpha)
   
   #Extract the cov and the mu
-  cov <- output[["MDC"]][["cov"]]
-  mu <- output[["MDC"]][["center"]]
+  cov <- output[["MCD"]]$cov
+  mu <- output[["MCD"]]$center
   
   covxx <- cov[-1,-1]
   covxy <- cov[-1,1]
@@ -268,28 +287,17 @@ lmDetMCD <- function(x, y, alpha, ...) {
   
   #calculate coefficients
   coefficients <- list()
-  coefficients[["beta"]] <- solve(covxx)%*%covxy
-  coefficients[["alpha"]] <- muy - t(mux)%*%coefficients[["beta"]]
+  coefficients[["slope"]] <- solve(covxx)%*%covxy
+  coefficients[["intercept"]] <- muy - t(mux)%*%coefficients[["slope"]]
   
   #append coefficients to output
   output[["coefficients"]] <- coefficients
   
   #calculate fitted values
-  output[["fitted.values"]] <- x%*%coefficients[["beta"]]+coefficients[["alpha"]]*rep(1,nrow(X))
+  output[["fitted.values"]] <- x%*%coefficients[["slope"]]+rep(coefficients[["intercept"]],nrow(X))
   
   #calculate residuals
   output[["residuals"]] <- y-output[["fitted.values"]]
   
   return(output)
 }
-
-
-test <- covDetMCD(z, 0.5)
-test2 <- as.data.frame(cbind(z, test[["weights"]]))
-library(ggplot2)
-ggplot(test2, aes(V1, V2, color = V3)) +geom_point()
-
-#load("~/Dropbox/Uni/Master_Econometrie/Blok_3/Topics in Advanced stats/TiASgroup2/Eredivisie28.RData")
-test <- lmDetMCD(Eredivisie28[,1], Eredivisie28[,2], 0.75)
-test <- covDetMCD(Eredivisie28, 0.75)
-test2 <- lm(MarketValue ~ Age, data = Eredivisie28)
