@@ -99,14 +99,14 @@ replace <- result$replacements
 
 # Plotting for y
 par(mfrow=c(1,2))
-plot(replace/1000000, result$eif_ols[1,],col="red",ylab="Intercept",xlab="Market Value (x10^6)",type = "l",lty=1,lwd=2)
+plot(replace/1000000, result$eif_ols[1,],col="red",ylab="Change in intercept (x n)",xlab="Market Value (in millions)",type = "l",lty=1,lwd=2)
 lines(replace/1000000, result$eif_lts[1,],col="blue",type = "l",lwd=2)
 lines(replace/1000000, result$eif_mcd[1,],col="green",type = "l",lwd=2)
 legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
        col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
        inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n")
 
-plot(replace/1000000, result$eif_ols[2,],col="red",ylab="Slope",xlab="Market Value (x10^6)",type = "l",lty=1,lwd=2)
+plot(replace/1000000, result$eif_ols[2,],col="red",ylab="Change in slope (x n)",xlab="Market Value (in millions)",type = "l",lty=1,lwd=2)
 lines(replace/1000000, result$eif_lts[2,],col="blue",type = "l",lwd=2)
 lines(replace/1000000, result$eif_mcd[2,],col="green",type = "l",lwd=2)
 legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
@@ -124,14 +124,14 @@ replace <- result$replacements
 
 # Plotting for x
 par(mfrow=c(1,2))
-plot(replace, result$eif_ols[1,],col="red",ylab="Intercept",xlab="Age",type = "l",lty=1,lwd=2)
+plot(replace, result$eif_ols[1,],col="red",ylab="Change in intercept (x n)",xlab="Age",type = "l",lty=1,lwd=2)
 lines(replace, result$eif_lts[1,],col="blue",type = "l",lwd=2)
 lines(replace, result$eif_mcd[1,],col="green",type = "l",lwd=2)
 legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
        col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
        inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n")
 
-plot(replace, result$eif_ols[2,],col="red",ylab="Slope",xlab="Age",type = "l",lty=1,lwd=2)
+plot(replace, result$eif_ols[2,],col="red",ylab="Change in slope (x n)",xlab="Age",type = "l",lty=1,lwd=2)
 lines(replace, result$eif_lts[2,],col="blue",type = "l",lwd=2)
 lines(replace, result$eif_mcd[2,],col="green",type = "l",lwd=2)
 legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
