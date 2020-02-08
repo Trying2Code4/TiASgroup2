@@ -34,9 +34,9 @@ eif <- function(x, y, dependent=TRUE, alpha) {
   
   # Determining the test range, that is the range of values to plug in
   if (dependent) {
-    replacements= seq( (median(y)-(max(y)-min(y)) ) , (median(y)+(max(y)-min(y)) ), length.out = 200)
+    replacements= repl(y)
   } else  {
-    replacements= seq( (median(x)-(max(x)-min(x)) ) , (median(x)+(max(x)-min(x)) ), length.out = 200)
+    replacements= repl(x)
   }
   
   # Randomly selecting the value to change
