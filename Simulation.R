@@ -1,4 +1,4 @@
-# Preparation
+## Preparation
 library(MASS)
 set.seed(17)
 source("DeterministicMCD.R")
@@ -10,15 +10,16 @@ n=1000
 trueParams=c(1,2)
 
 
+#' Runs a simulation with the following paramaters:
+#' @param epsilon: contamination level
+#' @param contamination: contamination type (0,1,2 or 3 as defined in the report)
+#' @param R: number of replications
 simulation <- function(epsilon=0.05,contamination=0,R=100,k=NaN) {
-    # Runs a simulation with the following paramaters:
-    # @epsilon: contamination level
-    # @contamination: contamination type (0,1,2 or 3 as defined in the report)
-    # @R: number of replications
-    
+
   # Define matrices for storing results
-  biases=matrix(nrow = R, ncol = 3)
-  MSEs=matrix(nrow = R, ncol = 3)
+  intercept_biases=matrix(nrow = R, ncol = 5)
+  slope_biases=matrix(nrow=R,ncol=5)
+  MSEs=matrix(nrow = R, ncol = 5)
   
   # Simulation loop
   for (r in 1:R) {
@@ -51,33 +52,46 @@ simulation <- function(epsilon=0.05,contamination=0,R=100,k=NaN) {
     }
     
     # Estimation
-    alpha=0.7
     ols <- lm(y ~ x)
-    lts <- ltsReg(x, y, alpha)
-    #mcd <- lmDetMCD(x, y, alpha)
+    lts1 <- ltsReg(x, y, alpha=0.7)
+    mcd1 <- lmDetMCD(x, y, alpha=0.7)
+    lts2 <- ltsReg(x, y, alpha=0.85)
+    mcd2 <- lmDetMCD(x, y, alpha=0.85)
     
     # Evaluation
     
     # Bias
-    biases[r,1]=norm_vec(abs(trueParams-ols$coefficients))
-    biases[r,2]=norm_vec(abs(trueParams-lts$coefficients))
-    #bias[r,3]=norm_vec(abs(trueParams-mcd$coefficients))
+    intercept_biases[r,1]=abs(trueParams[1]-ols$coefficients[1])
+    intercept_biases[r,2]=abs(trueParams[1]-lts1$coefficients[1])
+    intercept_biases[r,3]=abs(trueParams[1]-mcd1$coefficients[["intercept"]])
+    intercept_biases[r,4]=abs(trueParams[1]-lts2$coefficients[1])
+    intercept_biases[r,5]=abs(trueParams[1]-mcd2$coefficients[["intercept"]])
+    slope_biases[r,1]=abs(trueParams[2]-ols$coefficients[2])
+    slope_biases[r,2]=abs(trueParams[2]-lts1$coefficients[2])
+    slope_biases[r,3]=abs(trueParams[2]-mcd2$coefficients[["slope"]])
+    slope_biases[r,4]=abs(trueParams[2]-lts1$coefficients[2])
+    slope_biases[r,5]=abs(trueParams[2]-mcd2$coefficients[["slope"]])
     
     # MSE
     y_hat_ols=ols$coefficients[1]+ols$coefficients[2]*x_test
-    y_hat_lts=lts$coefficients[1]+lts$coefficients[2]*x_test
-    #y_hat_mcd=mcd$coefficients[1]+mcd$coefficients[2]*x_test
+    y_hat_lts1=lts1$coefficients[1]+lts1$coefficients[2]*x_test
+    y_hat_mcd1=as.vector(mcd1$coefficients[["intercept"]])+as.vector(mcd1$coefficients[["slope"]])*x_test
+    y_hat_lts2=lts2$coefficients[1]+lts2$coefficients[2]*x_test
+    y_hat_mcd2=as.vector(mcd2$coefficients[["intercept"]])+as.vector(mcd2$coefficients[["slope"]])*x_test
     MSEs[r,1] = MSE(y_hat_ols,y_test)
-    MSEs[r,2] = MSE(y_hat_lts,y_test)
-    #MSE[r,3] = MSE(y_hat_mcd,y_test)
+    MSEs[r,2] = MSE(y_hat_lts1,y_test)
+    MSEs[r,3] = MSE(y_hat_mcd1,y_test)
+    MSEs[r,4] = MSE(y_hat_lts2,y_test)
+    MSEs[r,5] = MSE(y_hat_mcd2,y_test)
   } 
-  return(list("bias"=colMeans(biases),
+  return(list("intercept_bias"=colMeans(intercept_biases),
+              "slope_bias"=colMeans(slope_biases),
               "MSE"=colMeans(MSEs),
               "y"=y,"x"=x,"contaminated"=contaminated,"k"=k))
 }
 
 
-# Plotting the different contamination processes
+## Plotting the different contamination processes
 par(mfrow=c(2,2),
     mai = c(0.7, 0.7, 0.2, 0.2))
 for (c in 0:3) {
@@ -93,11 +107,108 @@ for (c in 0:3) {
   }
   plot(sim$x[-sim$contaminated],sim$y[-sim$contaminated],pch = 16, cex = 0.4, col = "blue",
        xlab="x",ylab="y",ylim=c(min(sim$y)-1,max(sim$y)+1), xlim=c(min(sim$x)-1,max(sim$x)+1),
-       main=title)
+       main=title,cex.main=0.7)
   points(sim$x[sim$contaminated],sim$y[sim$contaminated],pch = 16, cex = 0.4, col = "red")
   abline(lm(sim$y[-sim$contaminated] ~ sim$x[-sim$contaminated]))
 }
 par(mfrow=c(1,1))
 
 
+
+## Running simulations
+
+# 1) contamination level: 5%
+results1=matrix(nrow = 15, ncol = 4)
+rownames(results1)=c("OLS intercept bias","OLS slope bias","OLS MSE",
+                    "LTS(alpha=0.7) intercept bias","LTS(alpha=0.7) slope bias","LTS(alpha=0.7) MSE",
+                    "MCD(alpha=0.7) intercept bias","MCD(alpha=0.7) slope bias","MCD(alpha=0.7) MSE",
+                    "LTS(alpha=0.85) intrecept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
+                    "MCD(alpha=0.85) intrecept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
+colnames(results1)=c(0,1,2,3)
+for (c in 0:3) {
+  sim=simulation(R=100,epsilon=0.05,contamination=c)
+  results1[1,(c+1)]=round(sim$intercept_bias[1],3)
+  results1[2,(c+1)]=round(sim$slope_bias[1],3)
+  results1[3,(c+1)]=round(sim$MSE[1],3)
+  results1[4,(c+1)]=round(sim$intercept_bias[2],3)
+  results1[5,(c+1)]=round(sim$slope_bias[2],3)
+  results1[6,(c+1)]=round(sim$MSE[2],3)
+  results1[7,(c+1)]=round(sim$intercept_bias[3],3)
+  results1[8,(c+1)]=round(sim$slope_bias[3],3)
+  results1[9,(c+1)]=round(sim$MSE[3],3)
+  results1[10,(c+1)]=round(sim$intercept_bias[4],3)
+  results1[11,(c+1)]=round(sim$slope_bias[4],3)
+  results1[12,(c+1)]=round(sim$MSE[4],3)
+  results1[13,(c+1)]=round(sim$intercept_bias[5],3)
+  results1[14,(c+1)]=round(sim$slope_bias[5],3)
+  results1[15,(c+1)]=round(sim$MSE[5],3)
+}
+
+#2) contamination level: 15%
+
+results2=matrix(nrow = 15, ncol = 4)
+rownames(results2)=c("OLS intercept bias","OLS slope bias","OLS MSE",
+                     "LTS(alpha=0.7) intercept bias","LTS(alpha=0.7) slope bias","LTS(alpha=0.7) MSE",
+                     "MCD(alpha=0.7) intercept bias","MCD(alpha=0.7) slope bias","MCD(alpha=0.7) MSE",
+                     "LTS(alpha=0.85) intrecept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
+                     "MCD(alpha=0.85) intrecept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
+colnames(results2)=c(0,1,2,3)
+for (c in 0:3) {
+  sim=simulation(R=100,epsilon=0.15,contamination=c)
+  results2[1,(c+1)]=round(sim$intercept_bias[1],3)
+  results2[2,(c+1)]=round(sim$slope_bias[1],3)
+  results2[3,(c+1)]=round(sim$MSE[1],3)
+  results2[4,(c+1)]=round(sim$intercept_bias[2],3)
+  results2[5,(c+1)]=round(sim$slope_bias[2],3)
+  results2[6,(c+1)]=round(sim$MSE[2],3)
+  results2[7,(c+1)]=round(sim$intercept_bias[3],3)
+  results2[8,(c+1)]=round(sim$slope_bias[3],3)
+  results2[9,(c+1)]=round(sim$MSE[3],3)
+  results2[10,(c+1)]=round(sim$intercept_bias[4],3)
+  results2[11,(c+1)]=round(sim$slope_bias[4],3)
+  results2[12,(c+1)]=round(sim$MSE[4],3)
+  results2[13,(c+1)]=round(sim$intercept_bias[5],3)
+  results2[14,(c+1)]=round(sim$slope_bias[5],3)
+  results2[15,(c+1)]=round(sim$MSE[5],3)
+}
+
+
+#3) contamination level: 30%
+results3=matrix(nrow = 15, ncol = 4)
+rownames(results3)=c("OLS intercept bias","OLS slope bias","OLS MSE",
+                     "LTS(alpha=0.7) intercept bias","LTS(alpha=0.7) slope bias","LTS(alpha=0.7) MSE",
+                     "MCD(alpha=0.7) intercept bias","MCD(alpha=0.7) slope bias","MCD(alpha=0.7) MSE",
+                     "LTS(alpha=0.85) intrecept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
+                     "MCD(alpha=0.85) intrecept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
+colnames(results3)=c(0,1,2,3)
+for (c in 0:3) {
+  sim=simulation(R=100,epsilon=0.3,contamination=c)
+  results3[1,(c+1)]=round(sim$intercept_bias[1],3)
+  results3[2,(c+1)]=round(sim$slope_bias[1],3)
+  results3[3,(c+1)]=round(sim$MSE[1],3)
+  results3[4,(c+1)]=round(sim$intercept_bias[2],3)
+  results3[5,(c+1)]=round(sim$slope_bias[2],3)
+  results3[6,(c+1)]=round(sim$MSE[2],3)
+  results3[7,(c+1)]=round(sim$intercept_bias[3],3)
+  results3[8,(c+1)]=round(sim$slope_bias[3],3)
+  results3[9,(c+1)]=round(sim$MSE[3],3)
+  results3[10,(c+1)]=round(sim$intercept_bias[4],3)
+  results3[11,(c+1)]=round(sim$slope_bias[4],3)
+  results3[12,(c+1)]=round(sim$MSE[4],3)
+  results3[13,(c+1)]=round(sim$intercept_bias[5],3)
+  results3[14,(c+1)]=round(sim$slope_bias[5],3)
+  results3[15,(c+1)]=round(sim$MSE[5],3)
+}
+
+# Look at results
+as.table(results1)
+as.table(results2)
+as.table(results3)
+# Load results to LaTeX
+library(xtable)
+xresults=cbind.data.frame(results1,results2[,2:4],results3[,2:4])
+xtab<-xtable(as.table(as.matrix(xresults)))
+print(xtab,file="simulationResults.tex",append=T,table.placement = "h",
+      caption.placement="bottom", hline.after=seq(from=-1,to=nrow(xtab),by=1))            
+write.csv(xresults,"simulationResults.csv")
 
