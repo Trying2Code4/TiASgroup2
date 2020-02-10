@@ -68,8 +68,8 @@ simulation <- function(epsilon=0.05,contamination=0,R=100,k=NaN) {
     intercept_biases[r,5]=abs(trueParams[1]-mcd2$coefficients[["intercept"]])
     slope_biases[r,1]=abs(trueParams[2]-ols$coefficients[2])
     slope_biases[r,2]=abs(trueParams[2]-lts1$coefficients[2])
-    slope_biases[r,3]=abs(trueParams[2]-mcd2$coefficients[["slope"]])
-    slope_biases[r,4]=abs(trueParams[2]-lts1$coefficients[2])
+    slope_biases[r,3]=abs(trueParams[2]-mcd1$coefficients[["slope"]])
+    slope_biases[r,4]=abs(trueParams[2]-lts2$coefficients[2])
     slope_biases[r,5]=abs(trueParams[2]-mcd2$coefficients[["slope"]])
     
     # MSE
@@ -122,8 +122,8 @@ results1=matrix(nrow = 15, ncol = 4)
 rownames(results1)=c("OLS intercept bias","OLS slope bias","OLS MSE",
                     "LTS(alpha=0.7) intercept bias","LTS(alpha=0.7) slope bias","LTS(alpha=0.7) MSE",
                     "MCD(alpha=0.7) intercept bias","MCD(alpha=0.7) slope bias","MCD(alpha=0.7) MSE",
-                    "LTS(alpha=0.85) intrecept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
-                    "MCD(alpha=0.85) intrecept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
+                    "LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
+                    "MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
 colnames(results1)=c(0,1,2,3)
 for (c in 0:3) {
   sim=simulation(R=100,epsilon=0.05,contamination=c)
