@@ -7,14 +7,26 @@ source("DeterministicMCD.R")
 
 #Eredivisie28 <- load(file.choose())
 
+# Checking outliers
+n=length(Eredivisie28$Age)
+
+LS <- lm(Eredivisie28$MarketValue ~ Eredivisie28$Age)
+studres(LS)
+plot(studres(LS),ylim=c(-2,5.2),ylab="Studentized Residuals")
+lines(studres(LS),ylim=c(-2,5.2))
+abline(h=qt(0.975,df=n-3),col="blue")
+abline(h=-qt(0.975,df=n-3),col="blue")
+
 # Plotting original data and regression lines
 plugin <- lmDetMCD(Eredivisie28$Age, Eredivisie28$MarketValue, alpha=0.8)
 plot(Eredivisie28$Age, Eredivisie28$MarketValue, xlab="Age", ylab="Market Value", type="p")
+points(Eredivisie28$Age[abs(studres(LS))>qt(0.975,df=n-3)],
+       Eredivisie28$MarketValue[abs(studres(LS))>qt(0.975,df=n-3)],pch=16,col="orange")
 abline(lm(MarketValue ~ Age, data=Eredivisie28), col="red")
 abline(ltsReg(MarketValue ~ Age, data=Eredivisie28, alpha=0.8), col="blue")
-abline(a = plugin$coefficients[["intercept"]], b=plugin$coefficients[["slope"]], col="green")
+abline(a = plugin$coefficients[["intercept"]], b=plugin$coefficients[["slope"]], col="darkgreen")
 legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
-       col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
+       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
        inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
 
 # # Function for estimating OLS coefficients
@@ -100,6 +112,7 @@ eif <- function(x, y, dependent=TRUE, alpha) {
   
 }
 
+
 set.seed(0)
 # Main code (for changing y)
 tic()
@@ -109,24 +122,25 @@ toc()
 replace <- result$replacements
 
 # Plotting for y
+options(scipen=999)
 par(mfrow=c(1,2))
 plot(replace/1000000, result$eif_ols[1,],col="red",ylab="Change in intercept (times n)",xlab="Market Value (in millions)",type = "l",lty=1,lwd=2)
 points(y=rep(0,length(Eredivisie28$MarketValue)),x=Eredivisie28$MarketValue/1000000,col="gray")
 points(y=0,x=Eredivisie28$MarketValue[result$observation]/1000000,pch=16)
 lines(replace/1000000, result$eif_lts[1,],col="blue",type = "l",lwd=2)
 lines(replace/1000000, result$eif_mcd[1,],col="darkgreen",type = "l",lwd=2)
-legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
-       col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
-       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
+legend("topleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2)
+       #,inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
 
 plot(replace/1000000, result$eif_ols[2,],col="red",ylab="Change in slope (times n)",xlab="Market Value (in millions)",type = "l",lty=1,lwd=2)
 points(y=rep(0,length(Eredivisie28$MarketValue)),x=Eredivisie28$MarketValue/1000000,col="gray")
 points(y=0,x=Eredivisie28$MarketValue[result$observation]/1000000,pch=16)
 lines(replace/1000000, result$eif_lts[2,],col="blue",type = "l",lwd=2)
 lines(replace/1000000, result$eif_mcd[2,],col="darkgreen",type = "l",lwd=2)
-legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
-       col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
-       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
+legend("topright", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2)
+       #,inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
 par(mfrow=c(1,1))
 
 
