@@ -159,6 +159,8 @@ covDetMCD <- function(x, alpha, ...) {
   
   # Compute subset size
   h <- h.alpha.n(alpha, nrow(x), ncol(x))
+  n <- nrow(x)
+  p <- ncol(x)
   
   #Calculate initial estimates of the scaling matrixes
   initialcovs <- list()
@@ -231,20 +233,32 @@ covDetMCD <- function(x, alpha, ...) {
     determinants[i] <- det(MDCRawtemp[[i]][["sigmahat"]])
   }
   
+  #Retrieve the center, covariance and the indices
+  bestmu <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["muhat"]]
+  bestsigma <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["sigmahat"]]
+  bestindices <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["indices"]]
+  
+  #calculate mahanalobis distances
+  mah <- Mdistance(X_og, bestmu, bestsigma)
+  
+  #Calculate sample correction factor before reweighting
+  factor2 <- quantile(mah^2, h/n, type = 1)/qchisq(h/n, p)
+  
   #paste the center, cov and indices in the final output list
-  output[["raw.center"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["muhat"]]
-  output[["raw.cov"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["sigmahat"]]
-  output[["best"]] <- MDCRawtemp[[which(determinants == min(determinants))[1]]][["indices"]]
+  output[["raw.center"]] <- bestmu
+  output[["raw.cov"]] <- bestsigma*factor2
+  output[["best"]] <- bestindices
+  
   # cat("Fraction of data used in unweighted: ",length(output[["best"]])/nrow(X_og),'\n')
   
   #Reweighting step
-  chisquare <- qchisq(0.975, df = ncol(X_og))
-  subset2 <- X_og[Mdistance(X_og, output[["raw.center"]], output[["raw.cov"]])^2<=chisquare,]
+  chisquare <- qchisq(0.975, df = p)
+  subset2 <- X_og[sqrt(mah^2/factor2) <= sqrt(chisquare),]
   
   #Adding the reweighted parameters & weights to the output list
   output[["center"]] <- colMeans(subset2)
   output[["cov"]] <- cov(subset2)
-  output[["weights"]] <- as.integer(as.logical(Mdistance(X_og, output[["raw.center"]], output[["raw.cov"]])^2<=chisquare))
+  output[["weights"]] <- as.integer(as.logical(sqrt(mah^2/factor2) <= sqrt(chisquare)))
   # cat("Fraction of data used in reweighted: ", sum(output[["weights"]])/nrow(X_og))
   return(output)
   
