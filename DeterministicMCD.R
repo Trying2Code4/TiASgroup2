@@ -64,7 +64,7 @@ covMSS <- function(z) {
   
   n=nrow(z)
   #n=length(z)
-  S4=(t(k)%*%k)/n
+  S4=crossprod(k)/n
   return(S4)
 }
 
@@ -111,7 +111,6 @@ x <- rbind(x, x2)
 
 # standardize with median and Qn
 z=apply(x,2,function(y) (y-median(y))/Q_n(y))
-
 
 #Tools---------
 #' Mahanalobis distance calculation
@@ -309,3 +308,14 @@ lmDetMCD <- function(x, y, alpha, ...) {
   
   return(output)
 }
+
+library(ggplot2)
+library(DetMCD)
+test <- covDetMCD(x, 0.5)
+test3 <- DetMCD(x, scale_est = "qn")
+test2 <- as.data.frame(cbind(x, test$weights))
+test2 <- as.data.frame(cbind(x, test3$raw.weights))
+ggplot(test2, aes(V1, V2, color = V3)) +geom_point()
+
+DetMCD_SP
+DetMCD_RW
