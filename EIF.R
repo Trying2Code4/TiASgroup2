@@ -1,6 +1,3 @@
-# Eredivisie28 <- load("~/Master QM/Block 3/Topics in Advanced Statistics/Group Assignment/Eredivisie28.RData")
-#Eredivisie28 <- load(file.choose())
-plot(Eredivisie28$Age, Eredivisie28$MarketValue, type="p")
 
 library(robustbase)
 library(tictoc)
@@ -8,16 +5,28 @@ library(tictoc)
 # Function for plug in robust estimator is loaded from
 source("DeterministicMCD.R")
 
-# Function for estimating OLS coefficients
-ols <- function(x, y, add_intercept=TRUE) {
-  x <- as.matrix(x)
-  y <- as.matrix(y)
-  if (add_intercept) {
-    x <- cbind(rep(1,nrow(x)),x)
-  }
-  beta <- solve(t(x)%*%x)%*%(t(x)%*%y)
-  return(beta)
-}
+#Eredivisie28 <- load(file.choose())
+
+# Plotting original data and regression lines
+plugin <- lmDetMCD(Eredivisie28$Age, Eredivisie28$MarketValue, alpha=0.8)
+plot(Eredivisie28$Age, Eredivisie28$MarketValue, xlab="Age", ylab="Market Value", type="p")
+abline(lm(MarketValue ~ Age, data=Eredivisie28), col="red")
+abline(ltsReg(MarketValue ~ Age, data=Eredivisie28, alpha=0.8), col="blue")
+abline(a = plugin$coefficients[["intercept"]], b=plugin$coefficients[["slope"]], col="green")
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
+       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
+
+# # Function for estimating OLS coefficients
+# ols <- function(x, y, add_intercept=TRUE) {
+#   x <- as.matrix(x)
+#   y <- as.matrix(y)
+#   if (add_intercept) {
+#     x <- cbind(rep(1,nrow(x)),x)
+#   }
+#   beta <- solve(t(x)%*%x)%*%(t(x)%*%y)
+#   return(beta)
+# }
 
 # Function for creating replacements
 repl <- function(y, length=200) {
@@ -44,11 +53,12 @@ eif <- function(x, y, dependent=TRUE, alpha) {
   i=sample(1:n,1)
   
   # Baseline estimates (i.e. no change in observed values)
-  baseline_ols <- ols(x, y)
-  baseline_lts <- ltsReg(x, y, alpha)$coefficients
+  baseline_ols <- lm(y ~ x)$coefficients
+  baseline_lts <- ltsReg(x, y, alpha = alpha)$coefficients
   baseline_mcd <- rep(NA,2)
-  baseline_mcd[1] <- lmDetMCD(x, y, alpha)$coefficients[["intercept"]]
-  baseline_mcd[2] <- lmDetMCD(x, y, alpha)$coefficients[["slope"]]
+  lmMCD <- lmDetMCD(x, y, alpha = alpha)
+  baseline_mcd[1] <- lmMCD$coefficients[["intercept"]]
+  baseline_mcd[2] <- lmMCD$coefficients[["slope"]]
   
   # Define matrices for storing coefficients
   beta_ols <- matrix(nrow = length(replacements), ncol = 2)
@@ -65,17 +75,18 @@ eif <- function(x, y, dependent=TRUE, alpha) {
       adj_y[i]=replacements[j]
       adj_x=x
     } else {
-      # Replace x-value if dependent is False
+    # Replace x-value if dependent is False
       adj_x=x  
       adj_x[i]=replacements[j]
       adj_y=y
     } 
     
     # Save estimates in matrices
-    beta_ols[j,] <- t(ols(as.matrix(adj_x), as.matrix(adj_y)))
-    beta_lts[j,] <- ltsReg(adj_x, adj_y, alpha)$coefficients
-    beta_mcd[j,1] <- lmDetMCD(adj_x, adj_y, alpha)$coefficients[["intercept"]]
-    beta_mcd[j,2] <- lmDetMCD(adj_x, adj_y, alpha)$coefficients[["slope"]]
+    beta_ols[j,] <- lm(adj_y ~ adj_x)$coefficients
+    beta_lts[j,] <- ltsReg(adj_x, adj_y, alpha = alpha)$coefficients
+    lmMCD <- lmDetMCD(adj_x, adj_y, alpha = alpha)
+    beta_mcd[j,1] <- lmMCD$coefficients[["intercept"]]
+    beta_mcd[j,2] <- lmMCD$coefficients[["slope"]]
   }
   
   # Compute EIFs
@@ -104,18 +115,18 @@ points(y=rep(0,length(Eredivisie28$MarketValue)),x=Eredivisie28$MarketValue/1000
 points(y=0,x=Eredivisie28$MarketValue[result$observation]/1000000,pch=16)
 lines(replace/1000000, result$eif_lts[1,],col="blue",type = "l",lwd=2)
 lines(replace/1000000, result$eif_mcd[1,],col="darkgreen",type = "l",lwd=2)
-legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
-       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
-       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n")
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
+       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
 
 plot(replace/1000000, result$eif_ols[2,],col="red",ylab="Change in slope (times n)",xlab="Market Value (in millions)",type = "l",lty=1,lwd=2)
 points(y=rep(0,length(Eredivisie28$MarketValue)),x=Eredivisie28$MarketValue/1000000,col="gray")
 points(y=0,x=Eredivisie28$MarketValue[result$observation]/1000000,pch=16)
 lines(replace/1000000, result$eif_lts[2,],col="blue",type = "l",lwd=2)
 lines(replace/1000000, result$eif_mcd[2,],col="darkgreen",type = "l",lwd=2)
-legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
-       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
-       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n")
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "green"),cex=0.8, text.font=1,lty=1,lwd=2,
+       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
 par(mfrow=c(1,1))
 
 
@@ -134,16 +145,16 @@ points(y=rep(0,length(Eredivisie28$Age)),x=Eredivisie28$Age,col="gray")
 points(y=0,x=Eredivisie28$Age[result$observation],pch=16)
 lines(replace, result$eif_lts[1,],col="blue",type = "l",lwd=2)
 lines(replace, result$eif_mcd[1,],col="darkgreen",type = "l",lwd=2)
-legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
        col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
-       inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n")
+       inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n", ncol=3)
 
 plot(replace, result$eif_ols[2,],col="red",ylab="Change in slope (times n)",xlab="Age",type = "l",lty=1,lwd=2)
 points(y=rep(0,length(Eredivisie28$Age)),x=Eredivisie28$Age,col="gray")
 points(y=0,x=Eredivisie28$Age[result$observation],pch=16)
 lines(replace, result$eif_lts[2,],col="blue",type = "l",lwd=2)
 lines(replace, result$eif_mcd[2,],col="darkgreen",type = "l",lwd=2)
-legend("bottomleft", legend=c("OLS", "LTS", "MCD"),
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
        col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
-       inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n")
+       inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n", ncol3)
 par(mfrow=c(1,1))
