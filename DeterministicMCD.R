@@ -64,7 +64,7 @@ covMSS <- function(z) {
   
   n=nrow(z)
   #n=length(z)
-  S4=(t(k)%*%k)/n
+  S4=crossprod(k)/n
   return(S4)
 }
 
@@ -99,19 +99,18 @@ x2= mvrnorm(n=250,mu=c(10,2),Sigma=matrix(c(1,0.6,0.6,1),2,2))
 # x2= mvrnorm(n=250,mu=c(10,2,3),Sigma=sigma)
 x <- rbind(x, x2)
 
-resultX <- covDetMCD(x, alpha=alpha)$raw.cov
-resultX_package <- DetMCD::DetMCD(x, alpha=alpha)$raw.cov
-resultX
-resultX_package
-
-resultX_rw <- covDetMCD(x, alpha=alpha)$cov
-resultX_package_rw <- DetMCD::DetMCD(x, alpha=alpha)$cov
-resultX_rw
-resultX_package_rw
+# resultX <- covDetMCD(x, alpha=alpha)$raw.cov
+# resultX_package <- DetMCD::DetMCD(x, alpha=alpha)$raw.cov
+# resultX
+# resultX_package
+# 
+# resultX_rw <- covDetMCD(x, alpha=alpha)$cov
+# resultX_package_rw <- DetMCD::DetMCD(x, alpha=alpha)$cov
+# resultX_rw
+# resultX_package_rw
 
 # standardize with median and Qn
-z=apply(x,2,function(y) (y-median(y))/Qn(y))
-
+z=apply(x,2,function(y) (y-median(y))/Q_n(y))
 
 #Tools---------
 #' Mahanalobis distance calculation
@@ -122,6 +121,14 @@ z=apply(x,2,function(y) (y-median(y))/Qn(y))
 Mdistance <- function(X, t, s) {
   X <- t(apply(X, 1, function(x) x-t(t)))
   return(apply(X, 1, function(x) sqrt(t(x)%*%solve(s)%*%x)))
+}
+
+Q_n <- function(x){
+  constant = 2.21914
+  h <- round(length(x)/2)+1
+  k <- choose(h,2)
+  distance <- dist(x)
+  return(constant*distance[order(distance)][k])
 }
 
 ## ______________________________________________________________
@@ -148,7 +155,7 @@ covDetMCD <- function(x, alpha, ...) {
   X_og <- x
   
   #standardize input
-  x <- apply(x,2,function(y) (y-median(y))/Qn(y))
+  x <- apply(x,2,function(y) (y-median(y))/Q_n(y))
   
   # Compute subset size
   h <- h.alpha.n(alpha, nrow(x), ncol(x))
@@ -172,7 +179,7 @@ covDetMCD <- function(x, alpha, ...) {
     B <- x%*%E
     
     #3.1.(2) Estimate the covariance of Z
-    L <- diag(apply(B,2,Qn)^2)
+    L <- diag(apply(B,2,Q_n)^2)
     sigmahat <- E%*%L%*%t(E)
     
     #3.1.(3) Estimate the location paramater
@@ -301,3 +308,14 @@ lmDetMCD <- function(x, y, alpha, ...) {
   
   return(output)
 }
+
+library(ggplot2)
+library(DetMCD)
+test <- covDetMCD(x, 0.5)
+test3 <- DetMCD(x, scale_est = "qn")
+test2 <- as.data.frame(cbind(x, test$weights))
+test2 <- as.data.frame(cbind(x, test3$raw.weights))
+ggplot(test2, aes(V1, V2, color = V3)) +geom_point()
+
+DetMCD_SP
+DetMCD_RW
