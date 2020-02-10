@@ -158,3 +158,65 @@ legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
        col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
        inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n", ncol3)
 par(mfrow=c(1,1))
+
+# ######################################
+
+set.seed(0)
+# Main code (for changing y)
+tic()
+result <- eif(Eredivisie28$Age, log(Eredivisie28$MarketValue), TRUE, alpha=0.75)
+toc()
+
+replace <- result$replacements
+
+# Plotting for y
+par(mfrow=c(1,2))
+plot(replace, result$eif_ols[1,],col="red",ylab="Change in intercept (times n)",xlab="(Logarithm of) Market Value",type = "l",lty=1,lwd=2)
+points(y=rep(0,length(Eredivisie28$MarketValue)),x=log(Eredivisie28$MarketValue),col="gray")
+points(y=0,x=log(Eredivisie28$MarketValue[result$observation]),pch=16)
+lines(replace, result$eif_lts[1,],col="blue",type = "l",lwd=2)
+lines(replace, result$eif_mcd[1,],col="darkgreen",type = "l",lwd=2)
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
+       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
+
+plot(replace, result$eif_ols[2,],col="red",ylab="Change in slope (times n)",xlab="(Logarithm of) Market Value",type = "l",lty=1,lwd=2)
+points(y=rep(0,length(Eredivisie28$MarketValue)),x=log(Eredivisie28$MarketValue),col="gray")
+points(y=0,x=log(Eredivisie28$MarketValue[result$observation]),pch=16)
+lines(replace, result$eif_lts[2,],col="blue",type = "l",lwd=2)
+lines(replace, result$eif_mcd[2,],col="darkgreen",type = "l",lwd=2)
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
+       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
+par(mfrow=c(1,1))
+
+
+# Main code (for changing x)
+set.seed(0)
+tic()
+result <- eif(Eredivisie28$Age, log(Eredivisie28$MarketValue), FALSE, alpha=0.75)
+toc()
+
+replace <- result$replacements
+
+# Plotting for x
+par(mfrow=c(1,2))
+plot(replace, result$eif_ols[1,],col="red",ylab="Change in intercept (times n)",xlab="Age",type = "l",lty=1,lwd=2)
+points(y=rep(0,length(Eredivisie28$Age)),x=Eredivisie28$Age,col="gray")
+points(y=0,x=Eredivisie28$Age[result$observation],pch=16)
+lines(replace, result$eif_lts[1,],col="blue",type = "l",lwd=2)
+lines(replace, result$eif_mcd[1,],col="darkgreen",type = "l",lwd=2)
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
+       inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n", ncol=3)
+
+plot(replace, result$eif_ols[2,],col="red",ylab="Change in slope (times n)",xlab="Age",type = "l",lty=1,lwd=2)
+points(y=rep(0,length(Eredivisie28$Age)),x=Eredivisie28$Age,col="gray")
+points(y=0,x=Eredivisie28$Age[result$observation],pch=16)
+lines(replace, result$eif_lts[2,],col="blue",type = "l",lwd=2)
+lines(replace, result$eif_mcd[2,],col="darkgreen",type = "l",lwd=2)
+legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
+       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
+       inset=c(0,1), xpd=TRUE, horiz=TRUE, bty="n", ncol3)
+par(mfrow=c(1,1))
+
