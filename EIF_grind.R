@@ -1,34 +1,30 @@
-
 library(robustbase)
-library(tictoc)
 
 # Function for plug in robust estimator is loaded from
 source("DeterministicMCD.R")
 
-#Eredivisie28 <- load(file.choose())
-
+par(mfrow=c(1,2))
 # Checking outliers
 n=length(Eredivisie28$Age)
-
-LS <- lm(Eredivisie28$MarketValue ~ Eredivisie28$Age)
+LS <- lm(log(Eredivisie28$MarketValue) ~ Eredivisie28$Age)
 studres(LS)
-plot(studres(LS),ylim=c(-2,5.2),ylab="Studentized Residuals")
-lines(studres(LS),ylim=c(-2,5.2))
+plot(studres(LS),ylim=c(-3,3),ylab="Studentized Residuals")
+lines(studres(LS),ylim=c(-2,3))
 abline(h=qt(0.975,df=n-3),col="blue")
 abline(h=-qt(0.975,df=n-3),col="blue")
 
 # Plotting original data and regression lines
-plugin <- lmDetMCD(Eredivisie28$Age, Eredivisie28$MarketValue, alpha=0.8)
-plot(Eredivisie28$Age, Eredivisie28$MarketValue, xlab="Age", ylab="Market Value", type="p")
+plugin <- lmDetMCD(Eredivisie28$Age, log(Eredivisie28$MarketValue), alpha=0.75)
+plot(Eredivisie28$Age, log(Eredivisie28$MarketValue), xlab="Age", ylab="(Log) Market Value", type="p")
 points(Eredivisie28$Age[abs(studres(LS))>qt(0.975,df=n-3)],
-       Eredivisie28$MarketValue[abs(studres(LS))>qt(0.975,df=n-3)],pch=16,col="orange")
-abline(lm(MarketValue ~ Age, data=Eredivisie28), col="red")
-abline(ltsReg(MarketValue ~ Age, data=Eredivisie28, alpha=0.8), col="blue")
+       log(Eredivisie28$MarketValue)[abs(studres(LS))>qt(0.975,df=n-3)],pch=16,col="orange")
+abline(lm(log(Eredivisie28$MarketValue) ~ Eredivisie28$Age), col="red")
+abline(ltsReg(log(Eredivisie28$MarketValue) ~ Eredivisie28$Age, alpha=0.75), col="blue")
 abline(a = plugin$coefficients[["intercept"]], b=plugin$coefficients[["slope"]], col="darkgreen")
 legend("bottomleft", legend=c("OLS", "LTS", "Plug-in"),
-       col=c("red", "blue", "darkgreen"),cex=0.8, text.font=1,lty=1,lwd=2,
-       inset=c(0,1), xpd=TRUE, horiz=FALSE, bty="n", ncol=3)
-
+       col=c("red", "blue", "darkgreen"),cex=0.5, text.font=1,lty=1,lwd=2,pt.cex=1,
+       bty="n",
+       inset=c(0,1),xpd=TRUE,horiz=TRUE)
 
 
 # Function for estimating EIF by changing the y-value of one observation
@@ -111,9 +107,7 @@ eif <- function(x, y, dependent=TRUE, alpha) {
 
 set.seed(0)
 # Main code (for changing y)
-tic()
 result <- eif(Eredivisie28$Age, Eredivisie28$MarketValue, TRUE, alpha=0.75)
-toc()
 
 replace <- result$replacements
 
@@ -143,9 +137,7 @@ par(mfrow=c(1,1))
 
 # Main code (for changing x)
 set.seed(0)
-tic()
 result <- eif(Eredivisie28$Age, Eredivisie28$MarketValue, FALSE, alpha=0.5)
-toc()
 
 replace <- result$replacements
 
@@ -177,9 +169,7 @@ par(mfrow=c(1,1))
 
 set.seed(0)
 # Main code (for changing y)
-tic()
 eifylog <- eif(Eredivisie28$Age, log(Eredivisie28$MarketValue), TRUE, alpha=0.50)
-toc()
 replace_y <- eifylog$replacements
 
 # Plotting for y
@@ -205,9 +195,7 @@ par(mfrow=c(1,1))
 
 # Main code (for changing x)
 set.seed(0)
-tic()
 eifxlog <- eif(Eredivisie28$Age, log(Eredivisie28$MarketValue), FALSE, alpha=0.5)
-toc()
 replace_x <- eifxlog$replacements
 
 # Plotting for x

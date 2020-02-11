@@ -1,5 +1,7 @@
 ## Preparation
 library(MASS)
+library(ggplot2)
+library(latex2exp)
 set.seed(17)
 source("DeterministicMCD.R")
 norm_vec <- function(x) sqrt(sum(x^2))
@@ -8,7 +10,6 @@ MSE<- function(y_hat,y) mean((y_hat-y)^2)
 # Setting sample size and true parameter values 
 n=1000
 trueParams=c(1,2)
-
 
 #' Runs a simulation with the following paramaters:
 #' @param epsilon: contamination level
@@ -53,10 +54,10 @@ simulation <- function(epsilon=0.05,contamination=0,R=100,k=NaN) {
     
     # Estimation
     ols <- lm(y ~ x)
-    lts1 <- ltsReg(x, y, alpha=0.7)
-    mcd1 <- lmDetMCD(x, y, alpha=0.7)
-    lts2 <- ltsReg(x, y, alpha=0.85)
-    mcd2 <- lmDetMCD(x, y, alpha=0.85)
+    lts1 <- ltsReg(x, y, alpha=0.5)
+    mcd1 <- lmDetMCD(x, y, alpha=0.5)
+    lts2 <- ltsReg(x, y, alpha=0.75)
+    mcd2 <- lmDetMCD(x, y, alpha=0.75)
     
     # Evaluation
     
@@ -117,16 +118,16 @@ par(mfrow=c(1,1))
 
 ## Running simulations
 
-# 1) contamination level: 5%
+# 1) contamination level: 10%
 results1=matrix(nrow = 15, ncol = 4)
 rownames(results1)=c("OLS intercept bias","OLS slope bias","OLS MSE",
-                    "LTS(alpha=0.7) intercept bias","LTS(alpha=0.7) slope bias","LTS(alpha=0.7) MSE",
-                    "MCD(alpha=0.7) intercept bias","MCD(alpha=0.7) slope bias","MCD(alpha=0.7) MSE",
-                    "LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
-                    "MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
+                    "LTS(alpha=0.5) intercept bias","LTS(alpha=0.5) slope bias","LTS(alpha=0.5) MSE",
+                    "MCD(alpha=0.5) intercept bias","MCD(alpha=0.5) slope bias","MCD(alpha=0.5) MSE",
+                    "LTS(alpha=0.75) intercept bias","LTS(alpha=0.75) slope bias","LTS(alpha=0.75) MSE",
+                    "MCD(alpha=0.75) intercept bias","MCD(alpha=0.75) slope bias","MCD(alpha=0.75) MSE")
 colnames(results1)=c(0,1,2,3)
 for (c in 0:3) {
-  sim=simulation(R=100,epsilon=0.05,contamination=c)
+  sim=simulation(R=100,epsilon=0.10,contamination=c)
   results1[1,(c+1)]=round(sim$intercept_bias[1],3)
   results1[2,(c+1)]=round(sim$slope_bias[1],3)
   results1[3,(c+1)]=round(sim$MSE[1],3)
@@ -144,17 +145,17 @@ for (c in 0:3) {
   results1[15,(c+1)]=round(sim$MSE[5],3)
 }
 
-#2) contamination level: 15%
+#2) contamination level: 30%
 
 results2=matrix(nrow = 15, ncol = 4)
 rownames(results2)=c("OLS intercept bias","OLS slope bias","OLS MSE",
-                     "LTS(alpha=0.7) intercept bias","LTS(alpha=0.7) slope bias","LTS(alpha=0.7) MSE",
-                     "MCD(alpha=0.7) intercept bias","MCD(alpha=0.7) slope bias","MCD(alpha=0.7) MSE",
-                     "LTS(alpha=0.85) intrecept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
-                     "MCD(alpha=0.85) intrecept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
+                     "LTS(alpha=0.5) intercept bias","LTS(alpha=0.5) slope bias","LTS(alpha=0.7) MSE",
+                     "MCD(alpha=0.5) intercept bias","MCD(alpha=0.5) slope bias","MCD(alpha=0.7) MSE",
+                     "LTS(alpha=0.75) intrecept bias","LTS(alpha=0.75) slope bias","LTS(alpha=0.85) MSE",
+                     "MCD(alpha=0.75) intrecept bias","MCD(alpha=0.75) slope bias","MCD(alpha=0.85) MSE")
 colnames(results2)=c(0,1,2,3)
 for (c in 0:3) {
-  sim=simulation(R=100,epsilon=0.15,contamination=c)
+  sim=simulation(R=100,epsilon=0.30,contamination=c)
   results2[1,(c+1)]=round(sim$intercept_bias[1],3)
   results2[2,(c+1)]=round(sim$slope_bias[1],3)
   results2[3,(c+1)]=round(sim$MSE[1],3)
@@ -173,42 +174,44 @@ for (c in 0:3) {
 }
 
 
-#3) contamination level: 30%
-results3=matrix(nrow = 15, ncol = 4)
-rownames(results3)=c("OLS intercept bias","OLS slope bias","OLS MSE",
-                     "LTS(alpha=0.7) intercept bias","LTS(alpha=0.7) slope bias","LTS(alpha=0.7) MSE",
-                     "MCD(alpha=0.7) intercept bias","MCD(alpha=0.7) slope bias","MCD(alpha=0.7) MSE",
-                     "LTS(alpha=0.85) intrecept bias","LTS(alpha=0.85) intercept bias","LTS(alpha=0.85) MSE",
-                     "MCD(alpha=0.85) intrecept bias","MCD(alpha=0.85) intercept bias","MCD(alpha=0.85) MSE")
-colnames(results3)=c(0,1,2,3)
-for (c in 0:3) {
-  sim=simulation(R=100,epsilon=0.3,contamination=c)
-  results3[1,(c+1)]=round(sim$intercept_bias[1],3)
-  results3[2,(c+1)]=round(sim$slope_bias[1],3)
-  results3[3,(c+1)]=round(sim$MSE[1],3)
-  results3[4,(c+1)]=round(sim$intercept_bias[2],3)
-  results3[5,(c+1)]=round(sim$slope_bias[2],3)
-  results3[6,(c+1)]=round(sim$MSE[2],3)
-  results3[7,(c+1)]=round(sim$intercept_bias[3],3)
-  results3[8,(c+1)]=round(sim$slope_bias[3],3)
-  results3[9,(c+1)]=round(sim$MSE[3],3)
-  results3[10,(c+1)]=round(sim$intercept_bias[4],3)
-  results3[11,(c+1)]=round(sim$slope_bias[4],3)
-  results3[12,(c+1)]=round(sim$MSE[4],3)
-  results3[13,(c+1)]=round(sim$intercept_bias[5],3)
-  results3[14,(c+1)]=round(sim$slope_bias[5],3)
-  results3[15,(c+1)]=round(sim$MSE[5],3)
-}
+
 
 # Look at results
 as.table(results1)
 as.table(results2)
-as.table(results3)
-# Load results to LaTeX
-library(xtable)
-xresults=cbind.data.frame(results1,results2[,2:4],results3[,2:4])
+# Save results
+xresults=cbind.data.frame(results1,results2[,2:4])
 xtab<-xtable(as.table(as.matrix(xresults)))
-print(xtab,file="simulationResults.tex",append=T,table.placement = "h",
-      caption.placement="bottom", hline.after=seq(from=-1,to=nrow(xtab),by=1))            
 write.csv(xresults,"simulationResults.csv")
+
+
+# Plotting MCD results
+par(mfrow=c(1,3),
+    mai = c(0.7, 0.7, 0.2, 0.2))
+for (c in 1:3) {
+  if (c==1) {
+    title="Type 1"
+  } else if (c==2) {
+    title="Type 2"
+  } else if (c==3) {
+    title="Type 3"
+  }
+  sim=simulation(R=1,epsilon=0.10,contamination=c,k=6)
+  data=cbind(sim$x,sim$y)
+  mcd <- covDetMCD(data, 0.75)
+  data2 <- as.data.frame(cbind(data, mcd[["weights"]]))
+  trendline=lm(data2$V2[as.logical(data2$V3)] ~ data2$V1[as.logical(data2$V3)])
+  data2$V3[data2$V3==1]="blue"
+  data2$V3[data2$V3==0]="black"
+  plot(data2$V1,data2$V2,col=data2$V3,pch=20,xlab="x",ylab="y",
+       main=title)
+  abline(trendline,col="blue")
+  abline(lm(sim$y ~ sim$x))
+  legend("topright", legend=c("OLS",expression(paste("Plug-in, ",alpha, "=75%"))),
+         col=c("black", "blue"),cex=0.8, text.font=1,lty=1,lwd=2)
+}
+par(mfrow=c(1,1))
+
+length(data2$V3[data2$V3=="blue"])/length(data2$V3)
+
 
